@@ -4,8 +4,8 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 
-async def hello(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text(f'Hello {update.effective_user.first_name}')
+async def greet_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text(f'got /start from  {update.effective_user.first_name}')
 
 
 # Load variables from .env if present
@@ -18,8 +18,8 @@ if not TOKEN:
         "TELEGRAM_BOT_TOKEN is not set. Please set it in your environment or in a .env file."
     )
 
-app = ApplicationBuilder().token(TOKEN).build()
+bot = ApplicationBuilder().token(TOKEN).build()
 
-app.add_handler(CommandHandler("hello", hello))
+bot.add_handler(CommandHandler("start", greet_user))
 
-app.run_polling()
+bot.run_polling()
