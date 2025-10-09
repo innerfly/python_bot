@@ -1,6 +1,7 @@
 # Environment files
 .env
 .idea
+log.log
 
 # Python
 __pycache__/
