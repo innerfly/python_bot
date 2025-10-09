@@ -4,12 +4,17 @@ from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-logging.basicConfig(level=logging.INFO,
-                    filename='log.log',
-                    format='%(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO,
+    filename='log.log',
+    format='%(asctime)s %(levelname)s - %(name)s - %(message)s'
+)
+
 
 async def greet_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text(f'got /start from  {update.effective_user.first_name}')
+    msg = f'got /start from  {update.effective_user.first_name}'
+    logging.info(msg)
+    await update.message.reply_text(msg)
 
 
 # Load variables from .env if present
