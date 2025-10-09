@@ -12,13 +12,13 @@ async def greet_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 load_dotenv()
 
 # Read token from environment variable
-TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-if not TOKEN:
+token = os.getenv("TELEGRAM_BOT_TOKEN")
+if not token:
     raise RuntimeError(
         "TELEGRAM_BOT_TOKEN is not set. Please set it in your environment or in a .env file."
     )
 
-bot = ApplicationBuilder().token(TOKEN).build()
+bot = ApplicationBuilder().token(token).build()
 
 bot.add_handler(CommandHandler("start", greet_user))
 
