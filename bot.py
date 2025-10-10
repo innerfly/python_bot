@@ -2,7 +2,7 @@ import logging
 import os
 from dotenv import load_dotenv
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
 
 logging.basicConfig(
     level=logging.INFO,
@@ -10,16 +10,17 @@ logging.basicConfig(
     format='%(asctime)s %(levelname)s - %(name)s - %(message)s'
 )
 
-
 async def greet_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     msg = f'got /start from  {update.effective_user.first_name}'
     logging.info(msg)
     await update.message.reply_text(msg)
 
+async def talk_to_me(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    text = update.message.text
+    await update.message.reply_text('reply: ' + text)
 
 # Load variables from .env if present
 load_dotenv()
-
 # Read token from environment variable
 token = os.getenv("TELEGRAM_BOT_TOKEN")
 if not token:
@@ -27,8 +28,10 @@ if not token:
         "TELEGRAM_BOT_TOKEN is not set. Please set it in your environment or in a .env file."
     )
 
-bot = ApplicationBuilder().token(token).build()
+app = ApplicationBuilder().token(token).build()
 
-bot.add_handler(CommandHandler("start", greet_user))
+app.add_handler(CommandHandler("start", greet_user))
 
-bot.run_polling()
+app.add_handler(MessageHandler(filters.TEXT, talk_to_me))
+
+app.run_polling()
