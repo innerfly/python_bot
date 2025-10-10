@@ -16,8 +16,8 @@ async def greet_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     await update.message.reply_text(msg)
 
 async def talk_to_me(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    text = update.message.text
-    await update.message.reply_text('reply: ' + text)
+    logging.info("User: %s, chat_id: %s, msg: %s", update.message.chat.username, update.message.chat.id, update.message.text)
+    await update.message.reply_text('reply: ' + update.message.text)
 
 # Load variables from .env if present
 load_dotenv()
