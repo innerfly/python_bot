@@ -17,8 +17,23 @@ if not host or not user or not path:
 def deploy(c):
     conn = Connection(host=host, user=user)
 
-    result = conn.run(f"cd {path} && git pull", hide=False)
+    pull = conn.run(f"cd {path} && git pull")
 
-    print(f"Ran '{result.command}' on {result.connection.host}, exit={result.exited}\n{result.stdout}")
+    output = (pull.stdout or "") + (pull.stderr or "")
+    lower = output.lower()
+    updated = not ("already up to date" in lower or "already up-to-date" in lower)
 
-    return result
+    if updated:
+        restart = conn.run("supervisorctl restart python_bot")
+        print(
+            f"Git updated. Restarted via supervisor.\n"
+            f"pull: exit={pull.exited}\n{pull.stdout}\n"
+            f"restart: exit={restart.exited}\n{restart.stdout}"
+        )
+        return restart
+    else:
+        print(
+            f"No updates from git. Skipping supervisor restart.\n"
+            f"pull: exit={pull.exited}\n{pull.stdout}"
+        )
+        return pull
