@@ -16,7 +16,7 @@ logging.basicConfig(
 )
 
 DOMAIN = os.getenv("DOMAIN")
-DOWNLOAD_PATH = os.getenv("DOWNLOAD_PATH", "downloads")
+DOWNLOAD_PATH = os.getenv("DOWNLOAD_PATH")
 
 Path(DOWNLOAD_PATH).mkdir(parents=True, exist_ok=True)
 
