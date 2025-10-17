@@ -14,7 +14,8 @@ def deploy(c):
     conn = Connection(host=host, user=user)
 
     conn.put('.env', path)
-    pull = conn.run(f"cd {path} && git pull", hide=False)
-
-    if "Already up to date." not in pull.stdout:
-        conn.run("supervisorctl restart python_bot", hide=False)
+    conn.run(f"""
+        cd {path} \
+         && git pull \
+        && supervisorctl restart python_bot
+    """, hide=False)

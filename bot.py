@@ -100,12 +100,6 @@ async def video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text("Unexpected error while processing the request.")
 
 
-async def talk_to_me(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    logging.info("User: %s, chat_id: %s, msg: %s", update.message.chat.username, update.message.chat.id,
-                 update.message.text)
-    await update.message.reply_text('reply: ' + update.message.text)
-
-
 token = os.getenv("BOT_TOKEN")
 if not token:
     raise RuntimeError(
@@ -115,6 +109,5 @@ if not token:
 app = ApplicationBuilder().token(token).build()
 
 app.add_handler(CommandHandler("video", video))
-app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), talk_to_me))
 
 app.run_polling()
