@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
 
+load_dotenv()
+
 logging.basicConfig(
     level=logging.INFO,
     filename='log.log',
@@ -19,13 +21,10 @@ async def talk_to_me(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     logging.info("User: %s, chat_id: %s, msg: %s", update.message.chat.username, update.message.chat.id, update.message.text)
     await update.message.reply_text('reply: ' + update.message.text)
 
-# Load variables from .env if present
-load_dotenv()
-# Read token from environment variable
-token = os.getenv("TELEGRAM_BOT_TOKEN")
+token = os.getenv("BOT_TOKEN")
 if not token:
     raise RuntimeError(
-        "TELEGRAM_BOT_TOKEN is not set. Please set it in your environment or in a .env file."
+        "BOT_TOKEN is not set. Please set it in your environment or in a .env file."
     )
 
 app = ApplicationBuilder().token(token).build()
