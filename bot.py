@@ -16,9 +16,10 @@ logging.basicConfig(
 )
 
 DOMAIN = os.getenv("DOMAIN")
-DOWNLOAD_PATH = os.getenv("DOWNLOAD_PATH")
+DOWNLOAD_RELATIVE_PATH = os.getenv("DOWNLOAD_RELATIVE_PATH")
+DEPLOY_PATH = os.getenv("DEPLOY_PATH")
 
-Path(DOWNLOAD_PATH).mkdir(parents=True, exist_ok=True)
+Path(DOWNLOAD_RELATIVE_PATH).mkdir(parents=True, exist_ok=True)
 
 
 async def _run_command(*args: str) -> tuple[int, str, str]:
@@ -50,7 +51,7 @@ async def video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text("Downloading... This may take a minute.")
 
         # Use a deterministic, web-safe filename template
-        template = f"{DOWNLOAD_PATH}/%(title)s-%(id)s.%(ext)s"
+        template = f"{DEPLOY_PATH}/{DOWNLOAD_RELATIVE_PATH}/%(title)s-%(id)s.%(ext)s"
         # First, compute the final filename without downloading
         code, filename, err = await _run_command(
             "yt-dlp",
@@ -83,7 +84,7 @@ async def video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             # Try to locate the downloaded file within DOWNLOAD_PATH (edge cases with extensions)
             try:
                 vid_id = file_path.stem.split("-")[-1]
-                matches = list(Path(DOWNLOAD_PATH).glob(f"*-{vid_id}.*"))
+                matches = list(Path(DOWNLOAD_RELATIVE_PATH).glob(f"*-{vid_id}.*"))
                 if matches:
                     file_path = matches[0]
             except Exception:
@@ -93,7 +94,7 @@ async def video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             await update.message.reply_text("Downloaded, but could not locate the file. Please try again later.")
             return
 
-        public_url = f"{DOMAIN.rstrip('/')}/{DOWNLOAD_PATH.strip('/')}/{file_path.name}"
+        public_url = f"{DOMAIN.rstrip('/')}/{DOWNLOAD_RELATIVE_PATH.strip('/')}/{file_path.name}"
         await update.message.reply_text(f"Done! Download link: {public_url}")
     except Exception as e:
         logging.exception("Unhandled error in /video")
