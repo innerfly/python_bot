@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import os
-import shlex
 from pathlib import Path
 from dotenv import load_dotenv
 from telegram import Update
@@ -22,42 +21,21 @@ DEPLOY_PATH = os.getenv("DEPLOY_PATH")
 Path(DOWNLOAD_RELATIVE_PATH).mkdir(parents=True, exist_ok=True)
 
 
-async def _run_command(*args: str) -> tuple[int, str, str]:
-    """Run a command asynchronously and return (code, stdout, stderr)."""
-    proc = await asyncio.create_subprocess_exec(
-        *args,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    stdout_b, stderr_b = await proc.communicate()
-    return proc.returncode, stdout_b.decode().strip(), stderr_b.decode().strip()
-
-
-async def video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def dl_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     try:
-        if context.args:
-            url = context.args[0]
-        else:
-            # Fallback: try to parse the message text after the command
-            # e.g. "/video <url>"
-            text = update.message.text or ""
-            parts = text.split(maxsplit=1)
-            url = parts[1].strip() if len(parts) > 1 else ""
-
-        if not url:
-            await update.message.reply_text("Usage: /video <youtube_url>")
+        if not context.args or not context.args[0]:
+            await update.message.reply_text("Usage: /v <youtube_url>")
             return
 
-        await update.message.reply_text("Downloading... This may take a minute.")
+        url = context.args[0]
 
-        # Use a deterministic, web-safe filename template
-        template = f"{DEPLOY_PATH}/{DOWNLOAD_RELATIVE_PATH}/%(title)s-%(id)s.%(ext)s"
+        file_path = f"{DEPLOY_PATH}/{DOWNLOAD_RELATIVE_PATH}/%(title)s-%(id)s.%(ext)s"
         # First, compute the final filename without downloading
         code, filename, err = await _run_command(
             "yt-dlp",
             "--restrict-filenames",
             "-o",
-            template,
+            file_path,
             "--get-filename",
             url,
         )
@@ -66,12 +44,14 @@ async def video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             await update.message.reply_text("Failed to analyze the video URL. Please check the link and try again.")
             return
 
-        # Now download the file to the same path
+        await update.message.reply_text("Downloading... This may take a minute.")
+
+        # Now download the file
         code, out, err = await _run_command(
             "yt-dlp",
             "--restrict-filenames",
             "-o",
-            template,
+            file_path,
             url,
         )
         if code != 0:
@@ -97,18 +77,23 @@ async def video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         public_url = f"{DOMAIN.rstrip('/')}/{DOWNLOAD_RELATIVE_PATH.strip('/')}/{file_path.name}"
         await update.message.reply_text(f"Done! Download link: {public_url}")
     except Exception as e:
-        logging.exception("Unhandled error in /video")
+        logging.exception("Unhandled error in /v")
         await update.message.reply_text("Unexpected error while processing the request.")
 
 
-token = os.getenv("BOT_TOKEN")
-if not token:
-    raise RuntimeError(
-        "BOT_TOKEN is not set. Please set it in your environment or in a .env file."
+async def _run_command(*args: str) -> tuple[int, str, str]:
+    """Run a command asynchronously and return (code, stdout, stderr)."""
+    proc = await asyncio.create_subprocess_exec(
+        *args,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
     )
+    stdout_b, stderr_b = await proc.communicate()
+    return proc.returncode, stdout_b.decode().strip(), stderr_b.decode().strip()
 
-app = ApplicationBuilder().token(token).build()
 
-app.add_handler(CommandHandler("video", video))
+app = ApplicationBuilder().token(os.getenv("BOT_TOKEN")).build()
+
+app.add_handler(CommandHandler("v", dl_video))
 
 app.run_polling()
