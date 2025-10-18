@@ -20,6 +20,8 @@ DEPLOY_PATH = os.getenv("DEPLOY_PATH")
 
 Path(DOWNLOAD_RELATIVE_PATH).mkdir(parents=True, exist_ok=True)
 
+FILE_PATH = f"{DEPLOY_PATH}/{DOWNLOAD_RELATIVE_PATH}/%(title)s-%(id)s.%(ext)s"
+
 
 async def dl_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     try:
@@ -29,29 +31,14 @@ async def dl_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
         url = context.args[0]
 
-        file_path = f"{DEPLOY_PATH}/{DOWNLOAD_RELATIVE_PATH}/%(title)s-%(id)s.%(ext)s"
-        # First, compute the final filename without downloading
-        code, filename, err = await _run_command(
-            "yt-dlp",
-            "--restrict-filenames",
-            "-o",
-            file_path,
-            "--get-filename",
-            url,
-        )
-        if code != 0 or not filename:
-            logging.error("yt-dlp --get-filename failed: code=%s, err=%s", code, err)
-            await update.message.reply_text("Failed to analyze the video URL. Please check the link and try again.")
-            return
+        filename = await _check_url(update, url, FILE_PATH)
 
-        await update.message.reply_text("Downloading... This may take a minute.")
-
-        # Now download the file
+        # Download the file
         code, out, err = await _run_command(
             "yt-dlp",
             "--restrict-filenames",
             "-o",
-            file_path,
+            FILE_PATH,
             url,
         )
         if code != 0:
@@ -90,6 +77,26 @@ async def _run_command(*args: str) -> tuple[int, str, str]:
     )
     stdout_b, stderr_b = await proc.communicate()
     return proc.returncode, stdout_b.decode().strip(), stderr_b.decode().strip()
+
+
+async def _check_url(update: Update, url: str, file_path: str):
+    # Compute the final filename without downloading
+    code, filename, err = await _run_command(
+        "yt-dlp",
+        "--restrict-filenames",
+        "-o",
+        file_path,
+        "--get-filename",
+        url,
+    )
+    if code != 0 or not filename:
+        logging.error("yt-dlp --get-filename failed: code=%s, err=%s", code, err)
+        await update.message.reply_text("Failed to analyze the video URL. Please check the link and try again.")
+        return
+
+    await update.message.reply_text("Downloading... This may take a minute.")
+
+    return filename
 
 
 app = ApplicationBuilder().token(os.getenv("BOT_TOKEN")).build()
