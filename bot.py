@@ -40,6 +40,7 @@ async def get_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
         code, out, err = await _run_command(
             "yt-dlp",
+            "--restrict-filenames",
             "-o",
             FILE_PATH,
             url,
@@ -79,6 +80,7 @@ async def get_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "--extract-audio",
             "--audio-format",
             "mp3",
+            "--restrict-filenames",
             "-o",
             FILE_PATH,
             url,
@@ -112,6 +114,7 @@ async def _check_url(url: str, file_path: str):
     # Compute the final filename without downloading
     code, filename, err = await _run_command(
         "yt-dlp",
+        "--restrict-filenames",
         "-o",
         file_path,
         "--get-filename",
