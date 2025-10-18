@@ -14,13 +14,12 @@ logging.basicConfig(
     format='%(asctime)s %(levelname)s - %(name)s - %(message)s'
 )
 
-DOMAIN = os.getenv("DOMAIN")
-DOWNLOAD_RELATIVE_PATH = os.getenv("DOWNLOAD_RELATIVE_PATH")
-DEPLOY_PATH = os.getenv("DEPLOY_PATH")
+DOMAIN = os.getenv("DOWNLOAD_DOMAIN")
+DOWNLOAD_PATH = os.getenv("DOWNLOAD_PATH")
 
-Path(DOWNLOAD_RELATIVE_PATH).mkdir(parents=True, exist_ok=True)
+Path(DOWNLOAD_PATH).mkdir(parents=True, exist_ok=True)
 
-FILE_PATH = f"{DEPLOY_PATH}/{DOWNLOAD_RELATIVE_PATH}/%(title)s-%(id)s.%(ext)s"
+FILE_PATH = f"{DOWNLOAD_PATH}/%(title)s-%(id)s.%(ext)s"
 
 
 async def get_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -121,7 +120,7 @@ async def _get_link(update: Update, filename: str):
         # Try to locate the downloaded file within DOWNLOAD_PATH (edge cases with extensions)
         try:
             vid_id = file_path.stem.split("-")[-1]
-            matches = list(Path(DOWNLOAD_RELATIVE_PATH).glob(f"*-{vid_id}.*"))
+            matches = list(Path(DOWNLOAD_PATH).glob(f"*-{vid_id}.*"))
             if matches:
                 file_path = matches[0]
         except Exception as e:
@@ -135,7 +134,7 @@ async def _get_link(update: Update, filename: str):
     file_size = os.path.getsize(file_path)
     size_mb = file_size / (1024 * 1024)
 
-    public_url = f"{DOMAIN.rstrip('/')}/{DOWNLOAD_RELATIVE_PATH.strip('/')}/{file_path.name}"
+    public_url = f"{DOMAIN.rstrip('/')}/{file_path.name}"
 
     await update.message.reply_text(f"Done! Download link: {public_url}\nFile size: {size_mb:.2f} MB")
 
