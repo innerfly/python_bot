@@ -44,7 +44,10 @@ async def get_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             await update.message.reply_text("Download failed. The video may be unavailable or blocked.")
             return
 
-        await _get_link(update, filename)
+        url, size = await _get_link(update, filename)
+        await update.message.reply_text(f"Done! Download link: {url}\nFile size: {size:.2f} MB")
+        return
+
     except Exception as e:
         logging.exception("Unhandled error in /v")
         await update.message.reply_text("Unexpected error while processing the request.")
@@ -76,7 +79,10 @@ async def get_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             logging.error("yt-dlp download failed: code=%s, err=%s", code, err)
             await update.message.reply_text("Download failed. The video may be unavailable or blocked.")
             return
-        await _get_link(update, filename)
+
+        url, size = await _get_link(update, filename)
+        await update.message.reply_text(f"Done! Download link: {url}\nFile size: {size:.2f} MB")
+        return
 
     except Exception as e:
         logging.exception("Unhandled error in /a")
@@ -114,7 +120,7 @@ async def _check_url(update: Update, url: str, file_path: str):
     return filename
 
 
-async def _get_link(update: Update, filename: str):
+async def _get_link(update: Update, filename: str) -> tuple[str, float]|None:
     file_path = Path(filename)
     if not file_path.exists():
         # Try to locate the downloaded file within DOWNLOAD_PATH (edge cases with extensions)
@@ -129,14 +135,14 @@ async def _get_link(update: Update, filename: str):
 
     if not file_path.exists():
         await update.message.reply_text("Downloaded, but could not locate the file. Please try again later.")
-        return
+        return None
 
     file_size = os.path.getsize(file_path)
     size_mb = file_size / (1024 * 1024)
 
     public_url = f"{DOMAIN.rstrip('/')}/{file_path.name}"
 
-    await update.message.reply_text(f"Done! Download link: {public_url}\nFile size: {size_mb:.2f} MB")
+    return public_url, size_mb
 
 
 app = ApplicationBuilder().token(os.getenv("BOT_TOKEN")).build()
