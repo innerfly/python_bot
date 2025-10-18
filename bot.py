@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+from datetime import datetime, timedelta
 from pathlib import Path
 from dotenv import load_dotenv
 from telegram import Update
@@ -16,6 +17,7 @@ logging.basicConfig(
 
 DOMAIN = os.getenv("DOWNLOAD_DOMAIN")
 DOWNLOAD_PATH = os.getenv("DOWNLOAD_PATH")
+CLEANING_INTERVAL_DAYS = int(os.getenv("CLEANING_INTERVAL_DAYS"))
 
 Path(DOWNLOAD_PATH).mkdir(parents=True, exist_ok=True)
 
@@ -147,7 +149,42 @@ async def _get_link(update: Update, filename: str) -> tuple[str, float]|None:
 
 app = ApplicationBuilder().token(os.getenv("BOT_TOKEN")).build()
 
+
+async def _cleanup_old_files(context: ContextTypes.DEFAULT_TYPE) -> None:
+    if CLEANING_INTERVAL_DAYS == 0:
+        return
+
+    try:
+        threshold = datetime.now().timestamp() - CLEANING_INTERVAL_DAYS * 24 * 60 * 60
+        base = Path(DOWNLOAD_PATH)
+        if not base.exists():
+            return
+        removed = 0
+        for p in base.iterdir():
+            try:
+                # Only consider regular files
+                if not p.is_file():
+                    continue
+                # Skip files that are currently being written by yt-dlp (temporary .part files)
+                if p.suffix == ".part":
+                    continue
+                mtime = p.stat().st_mtime
+                if mtime < threshold:
+                    p.unlink(missing_ok=True)
+                    removed += 1
+            except Exception as e:
+                logging.warning("Failed to consider/remove %s: %s", p, e)
+        if removed:
+            logging.info("Cleanup: removed %d old files from %s", removed, DOWNLOAD_PATH)
+    except Exception:
+        logging.exception("Cleanup job failed")
+
+
 app.add_handler(CommandHandler("v", get_video))
 app.add_handler(CommandHandler("a", get_audio))
+
+# Schedule cleanup to run immediately and then every 24 hours
+job_queue = app.job_queue
+job_queue.run_repeating(_cleanup_old_files, interval=24 * 60 * 60, first=0)
 
 app.run_polling()
