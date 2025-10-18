@@ -17,5 +17,6 @@ def deploy(c):
     conn.run(f"""
         cd {path} \
          && git pull \
+         && python3 -m pip install --upgrade -r requirements.txt \
         && supervisorctl restart python_bot
     """, hide=False)

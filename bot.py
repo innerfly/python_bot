@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
 from telegram import Update
@@ -150,7 +150,7 @@ async def _get_link(update: Update, filename: str) -> tuple[str, float]|None:
 app = ApplicationBuilder().token(os.getenv("BOT_TOKEN")).build()
 
 
-async def _cleanup_old_files(context: ContextTypes.DEFAULT_TYPE) -> None:
+async def _cleanup_old_files() -> None:
     if CLEANING_INTERVAL_DAYS == 0:
         return
 
