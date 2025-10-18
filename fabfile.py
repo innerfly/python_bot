@@ -13,7 +13,7 @@ path = os.getenv("DEPLOY_PATH")
 def deploy(c):
     conn = Connection(host=host, user=user)
 
-    conn.put('.env', path)
+    conn.put('.env', f'{path}/.env')
 
     conn.run(f"""
         cd {path} \
