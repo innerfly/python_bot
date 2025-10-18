@@ -14,9 +14,9 @@ def deploy(c):
     conn = Connection(host=host, user=user)
 
     conn.put('.env', path)
+
     conn.run(f"""
         cd {path} \
-         && git pull \
-         && python3 -m pip install --upgrade -r requirements.txt \
+        && git pull \
         && supervisorctl restart python_bot
     """, hide=False)
