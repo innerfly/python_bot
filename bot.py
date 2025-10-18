@@ -32,7 +32,11 @@ async def get_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
         url = context.args[0]
 
-        filename = await _check_url(update, url, FILE_PATH)
+        filename = await _check_url(url, FILE_PATH)
+        if filename is None:
+            await update.message.reply_text("Failed to analyze the video URL. Please check the link and try again.")
+
+        await update.message.reply_text("Downloading... This may take a minute.")
 
         code, out, err = await _run_command(
             "yt-dlp",
@@ -63,7 +67,11 @@ async def get_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
         url = context.args[0]
 
-        filename = await _check_url(update, url, FILE_PATH)
+        filename = await _check_url(url, FILE_PATH)
+        if filename is None:
+            await update.message.reply_text("Failed to analyze the video URL. Please check the link and try again.")
+
+        await update.message.reply_text("Downloading and extracting audio... This may take a minute.")
 
         code, out, err = await _run_command(
             "yt-dlp",
@@ -102,7 +110,7 @@ async def _run_command(*args: str) -> tuple[int, str, str]:
     return proc.returncode, stdout_b.decode().strip(), stderr_b.decode().strip()
 
 
-async def _check_url(update: Update, url: str, file_path: str):
+async def _check_url(url: str, file_path: str):
     # Compute the final filename without downloading
     code, filename, err = await _run_command(
         "yt-dlp",
@@ -112,12 +120,10 @@ async def _check_url(update: Update, url: str, file_path: str):
         "--get-filename",
         url,
     )
+
     if code != 0 or not filename:
         logging.error("yt-dlp --get-filename failed: code=%s, err=%s", code, err)
-        await update.message.reply_text("Failed to analyze the video URL. Please check the link and try again.")
-        return
-
-    await update.message.reply_text("Downloading... This may take a minute.")
+        return None
 
     return filename
 
