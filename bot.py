@@ -44,7 +44,7 @@ async def get_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             await update.message.reply_text("Download failed. The video may be unavailable or blocked.")
             return
 
-        await _get_link(filename)
+        await _get_link(update, filename)
     except Exception as e:
         logging.exception("Unhandled error in /v")
         await update.message.reply_text("Unexpected error while processing the request.")
@@ -76,10 +76,10 @@ async def get_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             logging.error("yt-dlp download failed: code=%s, err=%s", code, err)
             await update.message.reply_text("Download failed. The video may be unavailable or blocked.")
             return
-        await _get_link(filename)
+        await _get_link(update, filename)
 
     except Exception as e:
-        logging.exception("Unhandled error in /v")
+        logging.exception("Unhandled error in /a")
         await update.message.reply_text("Unexpected error while processing the request.")
 
 
