@@ -18,5 +18,5 @@ def deploy(c):
     conn.run(f"""
         cd {path} \
         && git pull \
-        && supervisorctl restart python_bot
+        && supervisorctl restart yt-dlp-telegram-bot
     """, hide=False)
