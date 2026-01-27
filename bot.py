@@ -21,7 +21,8 @@ CLEANING_INTERVAL_DAYS = int(os.getenv("CLEANING_INTERVAL_DAYS"))
 
 Path(DOWNLOAD_PATH).mkdir(parents=True, exist_ok=True)
 
-FILE_PATH = f"{DOWNLOAD_PATH}/%(title)s-%(id)s.%(ext)s"
+FILE_PATH = f"{DOWNLOAD_PATH}/%(title).200B-%(id)s.%(ext)s"
+
 
 async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle incoming URL messages and show video/audio buttons."""
@@ -30,26 +31,31 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     # Store URL in user data for later use
     context.user_data['url'] = url
 
-    reply_markup = InlineKeyboardMarkup([
+    keyboard = [
         [
-            InlineKeyboardButton("audio", callback_data="audio"),
-            InlineKeyboardButton("video", callback_data="video")
+            InlineKeyboardButton("Get Video", callback_data="video"),
+            InlineKeyboardButton("Get Audio", callback_data="audio")
         ]
-    ])
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.message.reply_text(
         "Choose an option:",
         reply_markup=reply_markup
     )
 
+
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle button clicks for video/audio download."""
     query = update.callback_query
     await query.answer()
 
+    # Hide buttons immediately to prevent double clicks
+    await query.message.edit_reply_markup(reply_markup=None)
+
     url = context.user_data.get('url')
     if not url:
-        await query.edit_message_text("Error: URL not found. Please send the video URL again.")
+        await query.message.edit_text("Error: URL not found. Please send the video URL again.")
         return
 
     choice = query.data
@@ -57,21 +63,22 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     try:
         filename = await _check_url(url, FILE_PATH)
         if filename is None:
-            await query.edit_message_text("Failed to analyze the video URL. Please check the link and try again.")
+            await query.message.edit_text("Failed to analyze the video URL. Please check the link and try again.")
             return
 
         if choice == "video":
-            await query.edit_message_text("Downloading video... This may take a minute.")
+            await query.message.edit_text("Downloading video... This may take a minute.")
 
             code, out, err = await _run_command(
                 "yt-dlp",
                 "--restrict-filenames",
+                "--windows-filenames",
                 "-o",
                 FILE_PATH,
                 url,
             )
         elif choice == "audio":
-            await query.edit_message_text("Downloading and extracting audio... This may take a minute.")
+            await query.message.edit_text("Downloading and extracting audio... This may take a minute.")
 
             code, out, err = await _run_command(
                 "yt-dlp",
@@ -81,6 +88,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 "--audio-format",
                 "mp3",
                 "--restrict-filenames",
+                "--windows-filenames",
                 "-o",
                 FILE_PATH,
                 url,
@@ -88,18 +96,15 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
         if code != 0:
             logging.error("yt-dlp download failed: code=%s, err=%s", code, err)
-            await query.message.edit_reply_markup(reply_markup=None)
             await query.message.edit_text("Download failed. The video may be unavailable or blocked.")
             return
 
         download_url, size = await _get_link(query, filename)
         if download_url:
-            await query.message.edit_reply_markup(reply_markup=None)
             await query.message.edit_text(f"Done! Download link: {download_url}\nFile size: {size:.2f} MB")
 
     except Exception as e:
         logging.exception("Unhandled error in button_callback")
-        await query.message.edit_reply_markup(reply_markup=None)
         await query.message.edit_text("Unexpected error while processing the request.")
 
 
@@ -119,6 +124,7 @@ async def _check_url(url: str, file_path: str):
     code, filename, err = await _run_command(
         "yt-dlp",
         "--restrict-filenames",
+        "--windows-filenames",
         "-o",
         file_path,
         "--get-filename",
