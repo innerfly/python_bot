@@ -4,8 +4,8 @@ import os
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
 
 load_dotenv()
 
@@ -24,79 +24,83 @@ Path(DOWNLOAD_PATH).mkdir(parents=True, exist_ok=True)
 FILE_PATH = f"{DOWNLOAD_PATH}/%(title)s-%(id)s.%(ext)s"
 
 
-async def get_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    try:
-        if not context.args or not context.args[0]:
-            await update.message.reply_text("Usage: /v <youtube_url>")
-            return
+async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle incoming URL messages and show video/audio buttons."""
+    url = update.message.text.strip()
 
-        url = context.args[0]
+    # Store URL in user data for later use
+    context.user_data['url'] = url
 
-        filename = await _check_url(url, FILE_PATH)
-        if filename is None:
-            await update.message.reply_text("Failed to analyze the video URL. Please check the link and try again.")
+    keyboard = [
+        [
+            InlineKeyboardButton("Get Video", callback_data="video"),
+            InlineKeyboardButton("Get Audio", callback_data="audio")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
 
-        await update.message.reply_text("Downloading... This may take a minute.")
+    await update.message.reply_text(
+        "Choose an option:",
+        reply_markup=reply_markup
+    )
 
-        code, out, err = await _run_command(
-            "yt-dlp",
-            "--restrict-filenames",
-            "-o",
-            FILE_PATH,
-            url,
-        )
-        if code != 0:
-            logging.error("yt-dlp download failed: code=%s, err=%s", code, err)
-            await update.message.reply_text("Download failed. The video may be unavailable or blocked.")
-            return
 
-        url, size = await _get_link(update, filename)
-        await update.message.reply_text(f"Done! Download link: {url}\nFile size: {size:.2f} MB")
+async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle button clicks for video/audio download."""
+    query = update.callback_query
+    await query.answer()
+
+    url = context.user_data.get('url')
+    if not url:
+        await query.edit_message_text("Error: URL not found. Please send the video URL again.")
         return
 
-    except Exception as e:
-        logging.exception("Unhandled error in /v")
-        await update.message.reply_text("Unexpected error while processing the request.")
+    choice = query.data
 
-
-async def get_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     try:
-        if not context.args or not context.args[0]:
-            await update.message.reply_text("Usage: /a <youtube_url>")
-            return
-
-        url = context.args[0]
-
         filename = await _check_url(url, FILE_PATH)
         if filename is None:
-            await update.message.reply_text("Failed to analyze the video URL. Please check the link and try again.")
-
-        await update.message.reply_text("Downloading and extracting audio... This may take a minute.")
-
-        code, out, err = await _run_command(
-            "yt-dlp",
-            "--format",
-            "bestaudio",
-            "--extract-audio",
-            "--audio-format",
-            "mp3",
-            "--restrict-filenames",
-            "-o",
-            FILE_PATH,
-            url,
-        )
-        if code != 0:
-            logging.error("yt-dlp download failed: code=%s, err=%s", code, err)
-            await update.message.reply_text("Download failed. The video may be unavailable or blocked.")
+            await query.edit_message_text("Failed to analyze the video URL. Please check the link and try again.")
             return
 
-        url, size = await _get_link(update, filename)
-        await update.message.reply_text(f"Done! Download link: {url}\nFile size: {size:.2f} MB")
-        return
+        if choice == "video":
+            await query.edit_message_text("Downloading video... This may take a minute.")
+
+            code, out, err = await _run_command(
+                "yt-dlp",
+                "--restrict-filenames",
+                "-o",
+                FILE_PATH,
+                url,
+            )
+        elif choice == "audio":
+            await query.edit_message_text("Downloading and extracting audio... This may take a minute.")
+
+            code, out, err = await _run_command(
+                "yt-dlp",
+                "--format",
+                "bestaudio",
+                "--extract-audio",
+                "--audio-format",
+                "mp3",
+                "--restrict-filenames",
+                "-o",
+                FILE_PATH,
+                url,
+            )
+
+        if code != 0:
+            logging.error("yt-dlp download failed: code=%s, err=%s", code, err)
+            await query.edit_message_text("Download failed. The video may be unavailable or blocked.")
+            return
+
+        download_url, size = await _get_link(query, filename)
+        if download_url:
+            await query.edit_message_text(f"Done! Download link: {download_url}\nFile size: {size:.2f} MB")
 
     except Exception as e:
-        logging.exception("Unhandled error in /a")
-        await update.message.reply_text("Unexpected error while processing the request.")
+        logging.exception("Unhandled error in button_callback")
+        await query.edit_message_text("Unexpected error while processing the request.")
 
 
 async def _run_command(*args: str) -> tuple[int, str, str]:
@@ -128,7 +132,7 @@ async def _check_url(url: str, file_path: str):
     return filename
 
 
-async def _get_link(update: Update, filename: str) -> tuple[str, float]|None:
+async def _get_link(query, filename: str) -> tuple[str, float]|None:
     file_path = Path(filename)
     if not file_path.exists():
         # Try to locate the downloaded file within DOWNLOAD_PATH (edge cases with extensions)
@@ -142,7 +146,7 @@ async def _get_link(update: Update, filename: str) -> tuple[str, float]|None:
             pass
 
     if not file_path.exists():
-        await update.message.reply_text("Downloaded, but could not locate the file. Please try again later.")
+        await query.edit_message_text("Downloaded, but could not locate the file. Please try again later.")
         return None
 
     file_size = os.path.getsize(file_path)
@@ -186,8 +190,11 @@ async def _cleanup_old_files() -> None:
         logging.exception("Cleanup job failed")
 
 
-app.add_handler(CommandHandler("v", get_video))
-app.add_handler(CommandHandler("a", get_audio))
+# Handle URLs sent as messages (filter for text that looks like a URL)
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & filters.Regex(r'https?://'), handle_url))
+
+# Handle button callbacks
+app.add_handler(CallbackQueryHandler(button_callback))
 
 # Schedule cleanup to run immediately and then every 24 hours
 job_queue = app.job_queue
