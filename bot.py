@@ -31,13 +31,12 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     # Store URL in user data for later use
     context.user_data['url'] = url
 
-    keyboard = [
+    reply_markup = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("Get Video", callback_data="video"),
-            InlineKeyboardButton("Get Audio", callback_data="audio")
+            InlineKeyboardButton("Audio", callback_data="audio"),
+            InlineKeyboardButton("Video", callback_data="video"),
         ]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    ])
 
     await update.message.reply_text(
         "Choose an option:",
