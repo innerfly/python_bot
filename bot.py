@@ -23,7 +23,6 @@ Path(DOWNLOAD_PATH).mkdir(parents=True, exist_ok=True)
 
 FILE_PATH = f"{DOWNLOAD_PATH}/%(title)s-%(id)s.%(ext)s"
 
-
 async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle incoming URL messages and show video/audio buttons."""
     url = update.message.text.strip()
@@ -31,18 +30,17 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     # Store URL in user data for later use
     context.user_data['url'] = url
 
-    keyboard = [
+    reply_markup = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("Get Video", callback_data="video"),
-            InlineKeyboardButton("Get Audio", callback_data="audio")
+            InlineKeyboardButton("audio", callback_data="audio"),
+            InlineKeyboardButton("video", callback_data="video")
         ]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    ])
 
     await update.message.reply_text(
+        "Choose an option:",
         reply_markup=reply_markup
     )
-
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle button clicks for video/audio download."""
