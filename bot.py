@@ -40,7 +40,6 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.message.reply_text(
-        "Choose an option:",
         reply_markup=reply_markup
     )
 
@@ -91,16 +90,19 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
         if code != 0:
             logging.error("yt-dlp download failed: code=%s, err=%s", code, err)
-            await query.edit_message_text("Download failed. The video may be unavailable or blocked.")
+            await query.message.edit_reply_markup(reply_markup=None)
+            await query.message.edit_text("Download failed. The video may be unavailable or blocked.")
             return
 
         download_url, size = await _get_link(query, filename)
         if download_url:
-            await query.edit_message_text(f"Done! Download link: {download_url}\nFile size: {size:.2f} MB")
+            await query.message.edit_reply_markup(reply_markup=None)
+            await query.message.edit_text(f"Done! Download link: {download_url}\nFile size: {size:.2f} MB")
 
     except Exception as e:
         logging.exception("Unhandled error in button_callback")
-        await query.edit_message_text("Unexpected error while processing the request.")
+        await query.message.edit_reply_markup(reply_markup=None)
+        await query.message.edit_text("Unexpected error while processing the request.")
 
 
 async def _run_command(*args: str) -> tuple[int, str, str]:
